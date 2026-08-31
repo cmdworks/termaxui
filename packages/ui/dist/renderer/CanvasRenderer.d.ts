@@ -38,7 +38,6 @@ export declare class CanvasRenderer {
     private getSearchMatch;
     private isLinkHovered;
     private renderRow;
-    private renderCursor;
     private renderImages;
     private renderScrollbar;
     private resolveColor;

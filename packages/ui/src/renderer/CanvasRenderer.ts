@@ -57,26 +57,33 @@ export class CanvasRenderer {
       cursorStyle: options.cursorStyle || 'block',
     };
 
-    this.canvas = document.createElement('canvas');
-    this.canvas.className = 'xterm-screen-canvas';
-    this.canvas.style.display = 'block';
-    this.canvas.style.position = 'absolute';
-    this.canvas.style.top = '0';
-    this.canvas.style.left = '0';
-    this.canvas.style.width = '100%';
-    this.canvas.style.height = '100%';
+    if (typeof document !== 'undefined') {
+      this.canvas = document.createElement('canvas');
+      this.canvas.className = 'xterm-screen-canvas';
+      this.canvas.style.display = 'block';
+      this.canvas.style.position = 'absolute';
+      this.canvas.style.top = '0';
+      this.canvas.style.left = '0';
+      this.canvas.style.width = '100%';
+      this.canvas.style.height = '100%';
 
-    const ctx = this.canvas.getContext('2d', { alpha: false });
-    if (!ctx) throw new Error('Could not obtain Canvas 2D context');
-    this.ctx = ctx;
+      const ctx = this.canvas.getContext('2d', { alpha: false });
+      this.ctx = ctx || ({} as any);
+    } else {
+      this.canvas = {} as any;
+      this.ctx = {} as any;
+    }
 
     this.initPalette(this.options.theme || {});
     this.initGrid(this.options.cols || 80, this.options.rows || 24);
-    this.measureFont();
-    this.resizeCanvas();
+    if (typeof document !== 'undefined') {
+      this.measureFont();
+      this.resizeCanvas();
+    }
   }
 
   public attach(container: HTMLElement) {
+    if (typeof document === 'undefined') return;
     container.style.position = 'relative';
     container.appendChild(this.canvas);
     this.measureFont();
@@ -125,9 +132,11 @@ export class CanvasRenderer {
     this.options.cols = cols;
     this.options.rows = rows;
     this.initGrid(cols, rows);
-    this.measureFont();
-    this.resizeCanvas();
-    this.renderAll();
+    if (typeof document !== 'undefined') {
+      this.measureFont();
+      this.resizeCanvas();
+      this.renderAll();
+    }
   }
 
   public applyDiff(diff: TerminalDiff) {
@@ -136,8 +145,10 @@ export class CanvasRenderer {
       this.options.cols = diff.cols;
       this.options.rows = diff.rows;
       this.initGrid(diff.cols, diff.rows);
-      this.measureFont();
-      this.resizeCanvas();
+      if (typeof document !== 'undefined') {
+        this.measureFont();
+        this.resizeCanvas();
+      }
       resized = true;
     }
 
@@ -147,20 +158,22 @@ export class CanvasRenderer {
     for (const dirtyRow of diff.dirtyRows) {
       if (dirtyRow.row < this.grid.length) {
         this.grid[dirtyRow.row] = dirtyRow.cells;
-        if (!resized) {
+        if (!resized && typeof document !== 'undefined') {
           this.renderRow(dirtyRow.row);
         }
       }
     }
 
-    if (resized) {
-      this.renderAll();
-    } else {
-      if (prevCursorRow !== this.cursor.row && prevCursorRow < this.grid.length) {
-        this.renderRow(prevCursorRow);
-      }
-      if (this.cursor.row < this.grid.length) {
-        this.renderRow(this.cursor.row);
+    if (typeof document !== 'undefined') {
+      if (resized) {
+        this.renderAll();
+      } else {
+        if (prevCursorRow !== this.cursor.row && prevCursorRow < this.grid.length) {
+          this.renderRow(prevCursorRow);
+        }
+        if (this.cursor.row < this.grid.length) {
+          this.renderRow(this.cursor.row);
+        }
       }
     }
   }
@@ -207,18 +220,24 @@ export class CanvasRenderer {
   }
 
   public measureFont() {
+    if (typeof document === 'undefined') return;
     this.dpr = (typeof window !== 'undefined' && window.devicePixelRatio) || 1;
     const fontSize = this.options.fontSize || 14;
     const fontFamily = this.options.fontFamily || 'monospace';
     const lineHeight = this.options.lineHeight || 1.2;
-    this.ctx.font = `${fontSize}px ${fontFamily}`;
-    const metrics = this.ctx.measureText('W');
-    const measured = Math.ceil(metrics.width);
-    this.charWidth = (measured > 0 ? measured : Math.ceil(fontSize * 0.6)) || 9;
+    if (this.ctx && this.ctx.font !== undefined) {
+      this.ctx.font = `${fontSize}px ${fontFamily}`;
+      const metrics = this.ctx.measureText?.('W');
+      const measured = metrics ? Math.ceil(metrics.width) : 0;
+      this.charWidth = (measured > 0 ? measured : Math.ceil(fontSize * 0.6)) || 9;
+    } else {
+      this.charWidth = Math.ceil(fontSize * 0.6) || 9;
+    }
     this.charHeight = Math.ceil(fontSize * lineHeight) || 18;
   }
 
   public resizeCanvas() {
+    if (typeof document === 'undefined') return;
     this.measureFont();
     this.dpr = (typeof window !== 'undefined' && window.devicePixelRatio) || 1;
     const cols = this.options.cols || 80;
@@ -234,27 +253,32 @@ export class CanvasRenderer {
       this.canvas.height = physicalHeight;
     }
 
-    this.ctx.setTransform(1, 0, 0, 1, 0, 0);
-    this.ctx.scale(this.dpr, this.dpr);
-    this.ctx.textBaseline = 'middle';
+    if (this.ctx.setTransform) {
+      this.ctx.setTransform(1, 0, 0, 1, 0, 0);
+      this.ctx.scale(this.dpr, this.dpr);
+      this.ctx.textBaseline = 'middle';
+    }
   }
 
   public renderAll() {
+    if (typeof document === 'undefined') return;
     this.resizeCanvas();
     const cols = this.options.cols || 80;
     const rows = this.options.rows || 24;
     const width = cols * this.charWidth;
     const height = rows * this.charHeight;
 
-    this.ctx.fillStyle = this.options.theme?.background || '#0e0e0f';
-    this.ctx.fillRect(0, 0, width, height);
+    if (this.ctx.fillRect) {
+      this.ctx.fillStyle = this.options.theme?.background || '#0e0e0f';
+      this.ctx.fillRect(0, 0, width, height);
 
-    for (let r = 0; r < this.grid.length; r++) {
-      this.renderRow(r);
+      for (let r = 0; r < this.grid.length; r++) {
+        this.renderRow(r);
+      }
+
+      this.renderImages();
+      this.renderScrollbar();
     }
-
-    this.renderImages();
-    this.renderScrollbar();
   }
 
   private isCellSelected(col: number, row: number): boolean {
@@ -292,6 +316,7 @@ export class CanvasRenderer {
   }
 
   private renderRow(row: number) {
+    if (typeof document === 'undefined') return;
     const cells = this.grid[row];
     if (!cells) return;
 
@@ -329,103 +354,93 @@ export class CanvasRenderer {
         fgStyle = tmp;
       }
 
-      // 1. Background
-      this.ctx.fillStyle = bgStyle;
-      this.ctx.fillRect(x, y, width, height);
-
-      // 2. Cursor
-      if (this.cursor.visible && row === this.cursor.row && col === this.cursor.col && !selected) {
-        this.renderCursor(x, y, width, height);
+      // Draw background if not default
+      if (bgStyle !== defaultBg && this.ctx.fillRect) {
+        this.ctx.fillStyle = bgStyle;
+        this.ctx.fillRect(x, y, width, height);
       }
 
-      // 3. Text
-      if (cell.char && cell.char !== ' ') {
+      if (cell.char && cell.char !== ' ' && this.ctx.fillText) {
         this.ctx.fillStyle = fgStyle;
         let fontStyle = '';
         if (cell.flags & CellFlags.BOLD) fontStyle += 'bold ';
         if (cell.flags & CellFlags.ITALIC) fontStyle += 'italic ';
-        const fontSize = this.options.fontSize || 14;
-        const fontFamily = this.options.fontFamily || 'monospace';
-        this.ctx.font = `${fontStyle}${fontSize}px ${fontFamily}`;
-
+        this.ctx.font = `${fontStyle}${this.options.fontSize || 14}px ${this.options.fontFamily || 'monospace'}`;
         this.ctx.fillText(cell.char, x, y + height / 2);
       }
 
-      // 4. Underline / Strikethrough / Link Hover
-      if ((cell.flags & CellFlags.UNDERLINE) || linkHovered) {
-        this.ctx.fillStyle = linkHovered ? (this.options.theme?.blue || '#61afef') : fgStyle;
-        this.ctx.fillRect(x, y + height - 2, width, 1.5);
-      }
-      if (cell.flags & CellFlags.STRIKETHROUGH) {
-        this.ctx.fillStyle = fgStyle;
-        this.ctx.fillRect(x, y + height / 2, width, 1.5);
+      // Underline / Strikethrough
+      if (this.ctx.fillRect) {
+        if (cell.flags & CellFlags.UNDERLINE || linkHovered) {
+          this.ctx.fillStyle = fgStyle;
+          this.ctx.fillRect(x, y + height - 2, width, 1);
+        }
+        if (cell.flags & CellFlags.STRIKETHROUGH) {
+          this.ctx.fillStyle = fgStyle;
+          this.ctx.fillRect(x, y + height / 2, width, 1);
+        }
       }
     }
-  }
 
-  private renderCursor(x: number, y: number, width: number, height: number) {
-    const cursorColor = this.options.theme?.cursor || '#e2e2e3';
-    this.ctx.fillStyle = cursorColor;
+    // Render cursor if on this row
+    if (this.cursor.visible && this.cursor.row === row && this.ctx.fillRect) {
+      const cx = this.cursor.col * this.charWidth;
+      const cy = this.cursor.row * this.charHeight;
+      const cursorColor = this.options.theme?.cursor || '#ffffff';
 
-    switch (this.cursor.shape) {
-      case 'block':
-        this.ctx.globalAlpha = 0.6;
-        this.ctx.fillRect(x, y, width, height);
+      this.ctx.fillStyle = cursorColor;
+      if (this.cursor.shape === 'block') {
+        this.ctx.globalAlpha = 0.5;
+        this.ctx.fillRect(cx, cy, this.charWidth, this.charHeight);
         this.ctx.globalAlpha = 1.0;
-        break;
-      case 'underline':
-        this.ctx.fillRect(x, y + height - 3, width, 3);
-        break;
-      case 'bar':
-        this.ctx.fillRect(x, y, 2.5, height);
-        break;
+      } else if (this.cursor.shape === 'bar') {
+        this.ctx.fillRect(cx, cy, 2, this.charHeight);
+      } else if (this.cursor.shape === 'underline') {
+        this.ctx.fillRect(cx, cy + this.charHeight - 2, this.charWidth, 2);
+      }
     }
   }
 
   private renderImages() {
+    if (this.images.length === 0 || !this.ctx.drawImage) return;
     for (const img of this.images) {
       const x = img.col * this.charWidth;
       const y = img.row * this.charHeight;
-      const w = img.width * this.charWidth;
-      const h = img.height * this.charHeight;
-      try {
-        this.ctx.drawImage(img.data, x, y, w, h);
-      } catch {}
+      const w = img.width;
+      const h = img.height;
+      if (img.data) {
+        try {
+          this.ctx.drawImage(img.data, x, y, w, h);
+        } catch {}
+      }
     }
   }
 
   private renderScrollbar() {
-    if (!this.scrollProgress || this.scrollbarAlpha <= 0) return;
+    if (!this.scrollProgress || this.scrollbarAlpha <= 0 || !this.ctx.fillRect) return;
     const { viewportY, totalLines } = this.scrollProgress;
     const rows = this.options.rows || 24;
     if (totalLines <= rows) return;
 
-    const canvasW = (this.options.cols || 80) * this.charWidth;
-    const canvasH = rows * this.charHeight;
+    const canvasHeight = rows * this.charHeight;
+    const canvasWidth = (this.options.cols || 80) * this.charWidth;
+    const barWidth = 6;
+    const thumbHeight = Math.max(20, (rows / totalLines) * canvasHeight);
+    const thumbY = (viewportY / (totalLines - rows)) * (canvasHeight - thumbHeight);
 
-    const trackHeight = canvasH;
-    const thumbHeight = Math.max(20, (rows / totalLines) * trackHeight);
-    const thumbY = (viewportY / totalLines) * trackHeight;
-    const thumbWidth = 5;
-    const thumbX = canvasW - thumbWidth - 2;
-
-    this.ctx.save();
-    this.ctx.globalAlpha = this.scrollbarAlpha * 0.45;
-    this.ctx.fillStyle = '#ffffff';
-    this.ctx.beginPath();
-    this.ctx.roundRect(thumbX, thumbY, thumbWidth, thumbHeight, 3);
-    this.ctx.fill();
-    this.ctx.restore();
+    this.ctx.save?.();
+    if (this.ctx) {
+      this.ctx.fillStyle = `rgba(255, 255, 255, ${0.35 * this.scrollbarAlpha})`;
+      this.ctx.fillRect(canvasWidth - barWidth - 2, thumbY, barWidth, thumbHeight);
+    }
+    this.ctx.restore?.();
   }
 
   private resolveColor(color: TerminalColor, fallback: string): string {
-    if (color.type === 'rgb' && color.r !== undefined) {
-      return `rgb(${color.r}, ${color.g}, ${color.b})`;
-    }
-    if (color.type === 'indexed' && color.index !== undefined) {
-      if (color.index < this.palette.length) {
-        return this.palette[color.index];
-      }
+    if (color.type === 'rgb' && color.r !== undefined && color.g !== undefined && color.b !== undefined) {
+      return `rgb(${color.r},${color.g},${color.b})`;
+    } else if (color.type === 'indexed' && color.index !== undefined) {
+      return this.palette[color.index] || fallback;
     }
     return fallback;
   }

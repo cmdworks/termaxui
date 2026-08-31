@@ -52,3 +52,68 @@ describe('TerminalRuntime Headless Engine', () => {
     expect(runtime.getSession('session-to-dispose')).toBeUndefined();
   });
 });
+
+import { Terminal } from '../Terminal.js';
+import { GhostTextManager } from './GhostTextManager.js';
+
+describe('GhostTextManager', () => {
+  it('should set, append, and accept full suggestion', () => {
+    const term = new Terminal();
+    const ghost = new GhostTextManager(term, { enableKeyboardInterception: false });
+
+    ghost.setSuggestion('git push');
+    ghost.appendSuggestion(' origin main');
+    expect(ghost.getSuggestion()).toBe('git push origin main');
+    expect(ghost.hasSuggestion()).toBe(true);
+
+    let accepted = '';
+    ghost.addListener({
+      onAccept: (text) => {
+        accepted = text;
+      },
+    });
+
+    const result = ghost.accept();
+    expect(result).toBe('git push origin main');
+    expect(accepted).toBe('git push origin main');
+    expect(ghost.hasSuggestion()).toBe(false);
+    expect(ghost.getSuggestion()).toBeNull();
+  });
+
+  it('should accept word by word', () => {
+    const term = new Terminal();
+    const ghost = new GhostTextManager(term, { enableKeyboardInterception: false });
+
+    ghost.setSuggestion('npm run build');
+
+    const firstWord = ghost.acceptWord();
+    expect(firstWord).toBe('npm ');
+    expect(ghost.getSuggestion()).toBe('run build');
+
+    const secondWord = ghost.acceptWord();
+    expect(secondWord).toBe('run ');
+    expect(ghost.getSuggestion()).toBe('build');
+
+    const lastWord = ghost.acceptWord();
+    expect(lastWord).toBe('build');
+    expect(ghost.getSuggestion()).toBeNull();
+    expect(ghost.hasSuggestion()).toBe(false);
+  });
+
+  it('should dismiss suggestion', () => {
+    const term = new Terminal();
+    const ghost = new GhostTextManager(term, { enableKeyboardInterception: false });
+
+    ghost.setSuggestion('cargo test');
+    let dismissed = false;
+    ghost.addListener({
+      onDismiss: () => {
+        dismissed = true;
+      },
+    });
+
+    ghost.dismiss();
+    expect(dismissed).toBe(true);
+    expect(ghost.hasSuggestion()).toBe(false);
+  });
+});
