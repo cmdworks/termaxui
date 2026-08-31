@@ -1,7 +1,7 @@
 {
   "name": "@termaxui/ui",
   "version": "0.1.0",
-  "description": "High-performance TypeScript renderer, xterm.js-compatible API, and extensible React components for TermaxUI",
+  "description": "High-performance TypeScript renderer, xterm.js-compatible API, headless runtime, and extensible React components for TermaxUI",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -10,6 +10,11 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "default": "./dist/index.js"
+    },
+    "./runtime": {
+      "types": "./dist/runtime/index.d.ts",
+      "import": "./dist/runtime/index.js",
+      "default": "./dist/runtime/index.js"
     },
     "./react": {
       "types": "./dist/react/index.d.ts",
@@ -39,6 +44,7 @@
     "emulator",
     "termax",
     "xterm",
+    "headless-terminal",
     "react-terminal",
     "wasm",
     "webgl",
