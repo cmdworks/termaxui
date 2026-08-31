@@ -68,10 +68,21 @@ export const TerminalPanel = forwardRef<PanelImperativeHandle, TerminalPanelProp
 
     const isCollapsed = size <= 0;
 
-    const dimensionStyle: React.CSSProperties =
-      direction === 'horizontal'
-        ? { width: `${size}%`, height: '100%', display: isCollapsed ? 'none' : 'flex' }
-        : { height: `${size}%`, width: '100%', display: isCollapsed ? 'none' : 'flex' };
+    const dimensionStyle: React.CSSProperties = isCollapsed
+      ? { display: 'none' }
+      : direction === 'horizontal'
+      ? {
+          width: `${size}%`,
+          height: '100%',
+          flex: `${size} 1 0%`,
+          display: 'flex',
+        }
+      : {
+          height: `${size}%`,
+          width: '100%',
+          flex: `${size} 1 0%`,
+          display: 'flex',
+        };
 
     return (
       <div

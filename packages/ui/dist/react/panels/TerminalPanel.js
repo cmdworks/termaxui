@@ -19,9 +19,21 @@ export const TerminalPanel = forwardRef(function TerminalPanel({ id: customId, d
         isExpanded: () => size > 0,
     }), [id, size, collapsePanel, expandPanel, setPanelSize]);
     const isCollapsed = size <= 0;
-    const dimensionStyle = direction === 'horizontal'
-        ? { width: `${size}%`, height: '100%', display: isCollapsed ? 'none' : 'flex' }
-        : { height: `${size}%`, width: '100%', display: isCollapsed ? 'none' : 'flex' };
+    const dimensionStyle = isCollapsed
+        ? { display: 'none' }
+        : direction === 'horizontal'
+            ? {
+                width: `${size}%`,
+                height: '100%',
+                flex: `${size} 1 0%`,
+                display: 'flex',
+            }
+            : {
+                height: `${size}%`,
+                width: '100%',
+                flex: `${size} 1 0%`,
+                display: 'flex',
+            };
     return (_jsx("div", { id: id, className: className, style: {
             position: 'relative',
             flexDirection: 'column',

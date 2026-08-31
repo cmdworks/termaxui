@@ -21,14 +21,35 @@ export function TerminalPanelGroup({ direction = 'horizontal', snapToGrid = fals
     useEffect(() => {
         if (panels.length === 0)
             return;
-        const count = panels.length;
-        const equalSize = 100 / count;
-        setSizes(panels.map((p) => p.defaultSize || equalSize));
-    }, [panels.length]);
+        if (panels.length === 1) {
+            setSizes([100]);
+            onLayout?.([100]);
+            return;
+        }
+        setSizes((prev) => {
+            if (prev.length === panels.length) {
+                const sum = prev.reduce((a, b) => a + b, 0);
+                if (sum > 0 && Math.abs(sum - 100) > 0.5) {
+                    const normalized = prev.map((s) => (s / sum) * 100);
+                    onLayout?.(normalized);
+                    return normalized;
+                }
+                return prev;
+            }
+            const equalSize = 100 / panels.length;
+            const initial = panels.map((p) => p.defaultSize || equalSize);
+            const initialSum = initial.reduce((a, b) => a + b, 0) || 1;
+            const normalized = initial.map((s) => (s / initialSum) * 100);
+            onLayout?.(normalized);
+            return normalized;
+        });
+    }, [panels.length, onLayout]);
     const getPanelSize = useCallback((id) => {
+        if (panels.length <= 1)
+            return 100;
         const idx = panels.findIndex((p) => p.id === id);
         if (idx === -1)
-            return 100 / (panels.length || 1);
+            return 100 / panels.length;
         return sizes[idx] ?? (100 / panels.length);
     }, [panels, sizes]);
     const setPanelSize = useCallback((id, newSize) => {
@@ -58,7 +79,7 @@ export function TerminalPanelGroup({ direction = 'horizontal', snapToGrid = fals
         const idx = panels.findIndex((p) => p.id === id);
         if (idx === -1)
             return;
-        const targetSize = lastExpandedSizes.current[id] || panels[idx].defaultSize || 20;
+        const targetSize = lastExpandedSizes.current[id] || panels[idx]?.defaultSize || (100 / panels.length);
         setPanelSize(id, targetSize);
     }, [panels, setPanelSize]);
     const equalizeSizes = useCallback(() => {
@@ -74,6 +95,8 @@ export function TerminalPanelGroup({ direction = 'horizontal', snapToGrid = fals
             return;
         const rect = containerRef.current.getBoundingClientRect();
         const totalDimension = direction === 'horizontal' ? rect.width : rect.height;
+        if (totalDimension <= 0)
+            return;
         const initialSizes = [...sizes];
         const handlePointerMove = (e) => {
             const currentClientPos = direction === 'horizontal' ? e.clientX : e.clientY;
@@ -87,8 +110,8 @@ export function TerminalPanelGroup({ direction = 'horizontal', snapToGrid = fals
             const rightIdx = handleIndex + 1;
             if (leftIdx >= initialSizes.length || rightIdx >= initialSizes.length)
                 return;
-            const leftMin = panels[leftIdx]?.minSize || 0;
-            const rightMin = panels[rightIdx]?.minSize || 0;
+            const leftMin = panels[leftIdx]?.minSize || 5;
+            const rightMin = panels[rightIdx]?.minSize || 5;
             let newLeft = initialSizes[leftIdx] + deltaPercent;
             let newRight = initialSizes[rightIdx] - deltaPercent;
             if (newLeft < leftMin) {
@@ -129,6 +152,7 @@ export function TerminalPanelGroup({ direction = 'horizontal', snapToGrid = fals
                 flexDirection: direction === 'horizontal' ? 'row' : 'column',
                 width: '100%',
                 height: '100%',
+                flex: '1 1 0%',
                 overflow: 'hidden',
                 ...style,
             }, children: children }) }));
