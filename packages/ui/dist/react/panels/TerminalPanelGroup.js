@@ -1,21 +1,23 @@
 import { jsx as _jsx } from "react/jsx-runtime";
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, } from 'react';
 import { PanelGroupContext } from './PanelContext.js';
 export function TerminalPanelGroup({ direction = 'horizontal', snapToGrid = false, cellWidth = 9, cellHeight = 17, onLayout, children, className, style, }) {
     const containerRef = useRef(null);
     const [panels, setPanels] = useState([]);
     const [sizes, setSizes] = useState([]);
-    const registerPanel = useCallback((id, defaultSize, minSize) => {
+    const lastExpandedSizes = useRef({});
+    const registerPanel = useCallback((id, defaultSize, minSize, maxSize = 100) => {
         setPanels((prev) => {
             if (prev.some((p) => p.id === id))
                 return prev;
-            return [...prev, { id, defaultSize, minSize }];
+            return [...prev, { id, defaultSize, minSize, maxSize }];
         });
+        lastExpandedSizes.current[id] = defaultSize;
     }, []);
     const unregisterPanel = useCallback((id) => {
         setPanels((prev) => prev.filter((p) => p.id !== id));
+        delete lastExpandedSizes.current[id];
     }, []);
-    // Compute normalized sizes
     useEffect(() => {
         if (panels.length === 0)
             return;
@@ -29,6 +31,36 @@ export function TerminalPanelGroup({ direction = 'horizontal', snapToGrid = fals
             return 100 / (panels.length || 1);
         return sizes[idx] ?? (100 / panels.length);
     }, [panels, sizes]);
+    const setPanelSize = useCallback((id, newSize) => {
+        const idx = panels.findIndex((p) => p.id === id);
+        if (idx === -1)
+            return;
+        setSizes((prev) => {
+            const next = [...prev];
+            next[idx] = newSize;
+            onLayout?.(next);
+            return next;
+        });
+        if (newSize > 0) {
+            lastExpandedSizes.current[id] = newSize;
+        }
+    }, [panels, onLayout]);
+    const collapsePanel = useCallback((id) => {
+        const idx = panels.findIndex((p) => p.id === id);
+        if (idx === -1)
+            return;
+        if (sizes[idx] > 0) {
+            lastExpandedSizes.current[id] = sizes[idx];
+        }
+        setPanelSize(id, 0);
+    }, [panels, sizes, setPanelSize]);
+    const expandPanel = useCallback((id) => {
+        const idx = panels.findIndex((p) => p.id === id);
+        if (idx === -1)
+            return;
+        const targetSize = lastExpandedSizes.current[id] || panels[idx].defaultSize || 20;
+        setPanelSize(id, targetSize);
+    }, [panels, setPanelSize]);
     const equalizeSizes = useCallback(() => {
         if (panels.length === 0)
             return;
@@ -55,8 +87,8 @@ export function TerminalPanelGroup({ direction = 'horizontal', snapToGrid = fals
             const rightIdx = handleIndex + 1;
             if (leftIdx >= initialSizes.length || rightIdx >= initialSizes.length)
                 return;
-            const leftMin = panels[leftIdx]?.minSize || 10;
-            const rightMin = panels[rightIdx]?.minSize || 10;
+            const leftMin = panels[leftIdx]?.minSize || 0;
+            const rightMin = panels[rightIdx]?.minSize || 0;
             let newLeft = initialSizes[leftIdx] + deltaPercent;
             let newRight = initialSizes[rightIdx] - deltaPercent;
             if (newLeft < leftMin) {
@@ -87,6 +119,9 @@ export function TerminalPanelGroup({ direction = 'horizontal', snapToGrid = fals
             registerPanel,
             unregisterPanel,
             getPanelSize,
+            setPanelSize,
+            collapsePanel,
+            expandPanel,
             startDragging,
             equalizeSizes,
         }, children: _jsx("div", { ref: containerRef, className: className, style: {
