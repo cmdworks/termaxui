@@ -550,7 +550,8 @@ export class VtEngine {
     this.currentBg = { type: 'default' };
     this.cursor.col = 0;
     this.cursor.row = 0;
+    this.scrollback = [];
+    this.viewportY = 0;
     this.initGrid();
-    this.viewportY = this.scrollback.length;
   }
 }
