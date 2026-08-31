@@ -55,13 +55,97 @@ export class VtEngine {
     this.initGrid();
   }
 
-  public resize(cols: number, rows: number) {
-    this.cols = Math.max(1, cols);
-    this.rows = Math.max(1, rows);
+  public flushDiff(): TerminalDiff {
+    const dirtyRows: DirtyRow[] = [];
+    for (const r of this.dirtyRowSet) {
+      if (r < this.lines.length) {
+        dirtyRows.push({
+          row: r,
+          cells: [...this.lines[r]],
+        });
+      }
+    }
+    this.dirtyRowSet.clear();
+
+    return {
+      cols: this.cols,
+      rows: this.rows,
+      cursor: { ...this.cursor },
+      dirtyRows,
+    };
+  }
+
+  public feed(input: string | Uint8Array): TerminalDiff {
+    this.parse(input);
+    return this.flushDiff();
+  }
+
+  public resize(cols: number, rows: number): TerminalDiff {
+    const oldCols = this.cols;
+    const oldRows = this.rows;
+    const newCols = Math.max(1, cols);
+    const newRows = Math.max(1, rows);
+
+    if (newCols === oldCols && newRows === oldRows) {
+      return this.flushDiff();
+    }
+
+    this.cols = newCols;
+    this.rows = newRows;
     this.scrollTop = 0;
     this.scrollBottom = this.rows - 1;
-    this.initGrid();
+
+    // Resize existing lines to match newCols
+    const nextLines: TerminalCell[][] = [];
+    for (let r = 0; r < this.lines.length; r++) {
+      const line = this.lines[r];
+      if (line.length < newCols) {
+        // Pad with empty cells
+        const padded = [...line];
+        for (let c = line.length; c < newCols; c++) {
+          padded.push({
+            char: ' ',
+            width: 1,
+            flags: CellFlags.EMPTY,
+            fg: { type: 'default' },
+            bg: { type: 'default' },
+          });
+        }
+        nextLines.push(padded);
+      } else {
+        nextLines.push(line.slice(0, newCols));
+      }
+    }
+
+    if (newRows > nextLines.length) {
+      // Growing vertically: add empty rows at the bottom
+      while (nextLines.length < newRows) {
+        nextLines.push(this.createEmptyLine());
+      }
+    } else if (newRows < nextLines.length) {
+      // Shrinking vertically: push top rows to scrollback and keep bottom
+      const excess = nextLines.length - newRows;
+      for (let i = 0; i < excess; i++) {
+        const topRow = nextLines.shift();
+        if (topRow) {
+          this.scrollback.push(topRow);
+          if (this.scrollback.length > this.maxScrollback) {
+            this.scrollback.shift();
+          }
+        }
+      }
+    }
+
+    this.lines = nextLines;
+    this.cursor.col = Math.min(this.cols - 1, this.cursor.col);
+    this.cursor.row = Math.min(this.rows - 1, this.cursor.row);
     this.viewportY = this.scrollback.length;
+
+    for (let r = 0; r < this.rows; r++) {
+      this.dirtyRowSet.add(r);
+    }
+
+    return this.flushDiff();
   }
 
   public scrollLines(delta: number) {
@@ -125,49 +209,46 @@ export class VtEngine {
     return line;
   }
 
-  public feed(data: string | Uint8Array): TerminalDiff {
-    const text = typeof data === 'string' ? data : new TextDecoder('utf-8').decode(data);
-    this.dirtyRowSet.clear();
-
-    const wasAtBottom = this.viewportY === this.scrollback.length;
-
+  public parse(input: string | Uint8Array) {
+    const text = typeof input === 'string' ? input : new TextDecoder().decode(input);
     for (let i = 0; i < text.length; i++) {
-      const ch = text[i];
+      const char = text[i];
+      const code = char.charCodeAt(0);
 
       switch (this.state) {
         case 'GROUND':
-          if (ch === '\x1b') {
+          if (char === '\x1b') {
             this.state = 'ESC';
-          } else if (ch === '\r') {
+          } else if (char === '\r') {
             this.cursor.col = 0;
-          } else if (ch === '\n') {
+          } else if (char === '\n') {
             this.lineFeed();
-          } else if (ch === '\b') {
+          } else if (char === '\b') {
             this.cursor.col = Math.max(0, this.cursor.col - 1);
-          } else if (ch === '\t') {
-            this.cursor.col = Math.min(this.cols - 1, (this.cursor.col + 8) & ~7);
-          } else if (ch === '\x07') {
+          } else if (char === '\t') {
+            this.cursor.col = Math.min(this.cols - 1, (Math.floor(this.cursor.col / 8) + 1) * 8);
+          } else if (char === '\x07') {
             this.events.onBell?.();
-          } else if (ch >= ' ') {
-            this.printChar(ch);
+          } else if (code >= 32) {
+            this.printChar(char);
           }
           break;
 
         case 'ESC':
-          if (ch === '[') {
+          if (char === '[') {
             this.state = 'CSI';
             this.csiParams = '';
-          } else if (ch === ']') {
+          } else if (char === ']') {
             this.state = 'OSC';
             this.oscBuffer = '';
-          } else if (ch === '7') {
-            this.savedCursor = { col: this.cursor.col, row: this.cursor.row };
+          } else if (char === '7') {
+            this.savedCursor = { ...this.cursor };
             this.state = 'GROUND';
-          } else if (ch === '8') {
-            this.cursor.col = this.savedCursor.col;
-            this.cursor.row = this.savedCursor.row;
+          } else if (char === '8') {
+            this.cursor.col = Math.min(this.cols - 1, this.savedCursor.col);
+            this.cursor.row = Math.min(this.rows - 1, this.savedCursor.row);
             this.state = 'GROUND';
-          } else if (ch === 'c') {
+          } else if (char === 'c') {
             this.reset();
             this.state = 'GROUND';
           } else {
@@ -176,71 +257,38 @@ export class VtEngine {
           break;
 
         case 'CSI':
-          if ((ch >= '0' && ch <= '9') || ch === ';' || ch === '?' || ch === '>') {
-            this.csiParams += ch;
+          if ((code >= 48 && code <= 57) || char === ';' || char === '?') {
+            this.csiParams += char;
           } else {
-            this.handleCsi(ch);
+            this.handleCsi(char);
             this.state = 'GROUND';
           }
           break;
 
         case 'OSC':
-          if (ch === '\x07') {
+          if (char === '\x07') {
             this.handleOsc(this.oscBuffer);
             this.state = 'GROUND';
-          } else if (ch === '\x1b') {
+          } else if (char === '\x1b') {
             this.state = 'OSC_ESC';
           } else {
-            this.oscBuffer += ch;
+            this.oscBuffer += char;
           }
           break;
 
         case 'OSC_ESC':
-          if (ch === '\\') {
+          if (char === '\\') {
             this.handleOsc(this.oscBuffer);
             this.state = 'GROUND';
           } else {
-            this.handleOsc(this.oscBuffer);
             this.state = 'GROUND';
-            if (ch === '[') {
-              this.state = 'CSI';
-              this.csiParams = '';
-            } else if (ch === ']') {
-              this.state = 'OSC';
-              this.oscBuffer = '';
-            }
           }
           break;
       }
     }
-
-    if (wasAtBottom) {
-      this.viewportY = this.scrollback.length;
-    }
-
-    const dirtyRows: DirtyRow[] = [];
-    const visible = this.getVisibleLines();
-    for (let r = 0; r < visible.length; r++) {
-      if (this.dirtyRowSet.has(r) || !wasAtBottom) {
-        dirtyRows.push({
-          row: r,
-          cells: [...visible[r]],
-        });
-      }
-    }
-
-    return {
-      cols: this.cols,
-      rows: this.rows,
-      cursor: {
-        ...this.cursor,
-        visible: this.cursor.visible && this.viewportY === this.scrollback.length,
-      },
-      dirtyRows,
-    };
   }
 
-  private printChar(ch: string) {
+  private printChar(char: string) {
     if (this.cursor.col >= this.cols) {
       this.cursor.col = 0;
       this.lineFeed();
@@ -251,7 +299,7 @@ export class VtEngine {
 
     if (r < this.lines.length && c < this.cols) {
       this.lines[r][c] = {
-        char: ch,
+        char,
         width: 1,
         flags: this.currentFlags,
         fg: { ...this.currentFg },

@@ -25,7 +25,9 @@ export declare class VtEngine {
     private csiParams;
     private oscBuffer;
     constructor(cols?: number, rows?: number, events?: VtEvents);
-    resize(cols: number, rows: number): void;
+    flushDiff(): TerminalDiff;
+    feed(input: string | Uint8Array): TerminalDiff;
+    resize(cols: number, rows: number): TerminalDiff;
     scrollLines(delta: number): void;
     scrollToBottom(): void;
     scrollToTop(): void;
@@ -33,7 +35,7 @@ export declare class VtEngine {
     getVisibleLines(): TerminalCell[][];
     private initGrid;
     private createEmptyLine;
-    feed(data: string | Uint8Array): TerminalDiff;
+    parse(input: string | Uint8Array): void;
     private printChar;
     private lineFeed;
     private scrollUp;
