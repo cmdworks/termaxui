@@ -5,6 +5,8 @@ export * from './parser/VtEngine.js';
 export * from './parser/BinaryDiffDecoder.js';
 export * from './renderer/CanvasRenderer.js';
 export * from './renderer/DomRenderer.js';
+export * from './renderer/GlyphAtlas.js';
+export * from './renderer/WebGpuRenderer.js';
 export * from './adapters/tauri.js';
 export * from './adapters/web.js';
 export * from './addons/xterm-compat.js';
