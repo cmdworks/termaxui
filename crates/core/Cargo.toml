@@ -1,0 +1,9 @@
+[package]
+name = "termaxui-core"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+vte = "0.13"
+unicode-width = "0.1"
+unicode-segmentation = "1.11"

@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TermaxUI Playground — Dual-Target Rust Terminal Engine</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="app-layout">
+    <header class="app-header">
+      <div class="brand">
+        <div class="logo-mark">
+          <span class="logo-text">TX</span>
+        </div>
+        <div class="brand-info">
+          <h1>TermaxUI</h1>
+          <span class="badge">WASM + Rust Core</span>
+        </div>
+      </div>
+
+      <div class="toolbar">
+        <button id="btn-sample-fast" class="btn btn-secondary">Run Matrix</button>
+        <button id="btn-sample-agent" class="btn btn-secondary">Simulate Agent</button>
+        <button id="btn-sample-sgr" class="btn btn-secondary">Color Test</button>
+        <div class="divider"></div>
+        <select id="select-theme" class="select">
+          <option value="termax">Theme: Termax Dark</option>
+          <option value="tokyo-night">Tokyo Night</option>
+          <option value="nord">Nord</option>
+          <option value="catppuccin">Catppuccin Mocha</option>
+          <option value="gruvbox">Gruvbox Dark</option>
+        </select>
+        <button id="btn-clear" class="btn btn-primary">Clear</button>
+      </div>
+    </header>
+
+    <main class="terminal-wrapper">
+      <div class="terminal-window">
+        <div class="window-titlebar">
+          <div class="traffic-lights">
+            <span class="light close"></span>
+            <span class="light minimize"></span>
+            <span class="light maximize"></span>
+          </div>
+          <div class="window-title">termaxui-browser-session ~ zsh (80x24)</div>
+          <div class="stats" id="perf-stats">FPS: 60 | Diff: <1ms</div>
+        </div>
+        <div id="terminal-container" class="terminal-content"></div>
+      </div>
+    </main>
+
+    <footer class="app-footer">
+      <div class="footer-left">
+        <span class="status-dot"></span>
+        <span id="agent-status">Idle (Shell Ready)</span>
+      </div>
+      <div class="footer-right">
+        <span>Dual Target: Native (Tauri IPC) + Web (WASM)</span>
+        <span>•</span>
+        <span>162 Languages • Tree-sitter AST</span>
+      </div>
+    </footer>
+  </div>
+
+  <script type="module" src="main.js"></script>
+</body>
+</html>

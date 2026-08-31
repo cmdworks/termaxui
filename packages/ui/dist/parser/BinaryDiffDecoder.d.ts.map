@@ -1,0 +1,1 @@
+{"version":3,"file":"BinaryDiffDecoder.d.ts","sourceRoot":"","sources":["../../src/parser/BinaryDiffDecoder.ts"],"names":[],"mappings":"AAAA,OAAO,EAKL,YAAY,EACb,MAAM,aAAa,CAAC;AAErB,qBAAa,iBAAiB;WACd,MAAM,CAAC,MAAM,EAAE,WAAW,GAAG,UAAU,GAAG,YAAY,GAAG,IAAI;CAuG5E"}

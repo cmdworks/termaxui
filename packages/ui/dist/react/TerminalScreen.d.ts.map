@@ -1,0 +1,1 @@
+{"version":3,"file":"TerminalScreen.d.ts","sourceRoot":"","sources":["../../src/react/TerminalScreen.tsx"],"names":[],"mappings":"AAAA,OAAO,KAAoB,MAAM,OAAO,CAAC;AAGzC,MAAM,WAAW,mBAAmB;IAClC,SAAS,CAAC,EAAE,MAAM,CAAC;IACnB,KAAK,CAAC,EAAE,KAAK,CAAC,aAAa,CAAC;CAC7B;AAED,wBAAgB,cAAc,CAAC,EAAE,SAAS,EAAE,KAAK,EAAE,EAAE,mBAAmB,qBAiCvE"}

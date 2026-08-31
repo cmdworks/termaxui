@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  rust-checks:
+    name: Rust Checks (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+          targets: wasm32-unknown-unknown
+
+      - name: Rustfmt Check
+        run: cargo fmt --all --check
+
+      - name: Clippy Lint
+        run: cargo clippy --all-targets --locked -- -D warnings
+
+      - name: Cargo Test
+        run: cargo test --workspace --locked
+
+      - name: Check WASM Target
+        run: cargo check --target wasm32-unknown-unknown -p termaxui-core -p termaxui-wasm
+
+  frontend-checks:
+    name: Frontend Typecheck & Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Install Dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm --dir packages/ui exec tsc --noEmit
+
+      - name: Unit Tests
+        run: pnpm --dir packages/ui exec vitest run
