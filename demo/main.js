@@ -284,3 +284,17 @@ window.addEventListener('resize', () => {
 document.getElementById('btn-sample-fast')?.addEventListener('click', () => {
   shell.executeCommand('matrix');
 });
+
+import { GhostTextManager } from '../packages/ui/src/runtime/GhostTextManager.js';
+
+const ghostTextManager = new GhostTextManager(terminal);
+ghostTextManager.addListener({
+  onAccept: (text) => {
+    shell.currentLine += text;
+    terminal.write(text);
+  },
+});
+
+document.getElementById('btn-sample-ghost')?.addEventListener('click', () => {
+  ghostTextManager.setSuggestion('git push --set-upstream origin feature/webgpu-shaders');
+});
