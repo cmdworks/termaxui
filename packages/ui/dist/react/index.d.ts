@@ -15,6 +15,7 @@ export * from './tabs/TerminalTab.js';
 export * from './tabs/TerminalTabBar.js';
 export * from './palette/TerminalCommandPalette.js';
 export * from './status/TerminalStatusBar.js';
+export * from './tree/TerminalTree.js';
 export * from './hooks/useTerminal.js';
 export * from './hooks/useTerminalSearch.js';
 export * from './hooks/useTerminalSelection.js';
