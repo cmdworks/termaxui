@@ -382,8 +382,10 @@ export class Terminal {
   public resize(cols: number, rows: number) {
     this.options.cols = cols;
     this.options.rows = rows;
-    this.vt.resize(cols, rows);
+    const diff = this.vt.resize(cols, rows);
     this.renderer.resize(cols, rows);
+    this.renderer.applyDiff(diff);
+    this.renderer.renderAll();
     this.transport?.resize(cols, rows);
 
     for (const listener of this.resizeListeners) {
